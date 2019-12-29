@@ -1,11 +1,12 @@
 package com.netflix.billing.bank.controller;
 
-import com.netflix.billing.bank.controller.wire.CreditAmount;
-import com.netflix.billing.bank.controller.wire.DebitAmount;
-import com.netflix.billing.bank.controller.wire.DebitHistory;
+import com.netflix.billing.bank.controller.wire.BankAccountsManager;
+import com.netflix.billing.bank.controller.wire.credit.CreditAmount;
+import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
+import com.netflix.billing.bank.controller.wire.debit.DebitHistory;
 import com.netflix.billing.bank.controller.wire.CustomerBalance;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 
 /**
  * Implement the following methods to complete the exercise.
@@ -13,9 +14,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class BankController {
 
-//    E.g. way to wire in dependencies. Note that there are other ways like constructor injection, setter injection etc.
-//    @Autowired
-//    private SomeDependency someDependency;
+    @Autowired
+    public BankAccountsManager bankAccountsManager;
 
     /**
      *
@@ -25,8 +25,10 @@ public class BankController {
      */
     @GetMapping("customer/{customerId}/balance")
     public CustomerBalance getBalance(@PathVariable String customerId) {
-        //TODO IMPLEMENT ME
-        return null;
+        if (null == customerId || customerId.isEmpty()) {
+            return null; // throw error
+        }
+        return bankAccountsManager.getBalance(customerId);
     }
 
     /**
@@ -37,8 +39,10 @@ public class BankController {
      */
     @PostMapping("customer/{customerId}/credit")
     public CustomerBalance postCredit(@PathVariable String customerId, @RequestBody CreditAmount creditAmount) {
-        //TODO IMPLEMENT ME
-        return null;
+        if (null == customerId || customerId.isEmpty() || null == creditAmount) {
+            return null; // throw error
+        }
+        return bankAccountsManager.addCredit(customerId, creditAmount.toCreditLineItem());
     }
 
     /**
@@ -49,8 +53,10 @@ public class BankController {
      */
     @PostMapping("customer/{customerId}/debit")
     public CustomerBalance debit(@PathVariable String customerId, @RequestBody DebitAmount debitAmount) {
-        //TODO IMPLEMENT ME
-        return null;
+        if (null == customerId || customerId.isEmpty()) {
+            return null;
+        }
+        return bankAccountsManager.addDebit(customerId, debitAmount.toDebitLineItem());
     }
 
     /**
@@ -60,8 +66,9 @@ public class BankController {
      */
     @GetMapping("customer/{customerId}/history")
     public DebitHistory debitHistory(@PathVariable String customerId) {
-        //TODO IMPLEMENT ME
-        return null;
+        if (null == customerId || customerId.isEmpty()) {
+            return null; // throw error
+        }
+        return bankAccountsManager.getDebitHistory(customerId);
     }
-
 }

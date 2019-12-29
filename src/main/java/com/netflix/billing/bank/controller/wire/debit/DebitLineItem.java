@@ -1,4 +1,7 @@
-package com.netflix.billing.bank.controller.wire;
+package com.netflix.billing.bank.controller.wire.debit;
+
+import com.netflix.billing.bank.controller.wire.credit.CreditType;
+import com.netflix.billing.bank.controller.wire.Money;
 
 import java.time.Instant;
 
@@ -11,6 +14,14 @@ public class DebitLineItem {
     private String transactionId;  //Credit transactionId it was charged against.
     private CreditType creditType; //Credit type it was charged against.
     private Instant transactionDate; //The time in UTC when the debit was applied to the account.
+
+    public DebitLineItem(String invoiceId, Money amount, Instant transactionDate) {
+        this.invoiceId = invoiceId;
+        this.amount = amount;
+        // this.transactionId = transactionId;
+        // this.creditType = creditType;
+        this.transactionDate = transactionDate;
+    }
 
     public String getInvoiceId() {
         return invoiceId;

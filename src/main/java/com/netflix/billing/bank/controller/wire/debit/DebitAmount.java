@@ -1,4 +1,8 @@
-package com.netflix.billing.bank.controller.wire;
+package com.netflix.billing.bank.controller.wire.debit;
+
+import com.netflix.billing.bank.controller.wire.Money;
+
+import java.time.Instant;
 
 /**
  * Wire objects representing debit transactions to the customer account. The amount represented here is by how much
@@ -22,5 +26,9 @@ public class DebitAmount {
 
     public void setMoney(Money money) {
         this.money = money;
+    }
+
+    public DebitLineItem toDebitLineItem() {
+        return new DebitLineItem(this.invoiceId, this.money, Instant.now());
     }
 }

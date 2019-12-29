@@ -1,4 +1,8 @@
-package com.netflix.billing.bank.controller.wire;
+package com.netflix.billing.bank.controller.wire.credit;
+
+import com.netflix.billing.bank.controller.wire.Money;
+
+import java.time.Instant;
 
 /**
  * Wire object representing a credit that the customer is trying to push to their account. The customer's balance will
@@ -36,5 +40,14 @@ public class CreditAmount {
 
     public void setCreditType(CreditType creditType) {
         this.creditType = creditType;
+    }
+
+    public CreditAmount(CreditType creditType, Money money) {
+        this.creditType = creditType;
+        this.money = money;
+    }
+
+    public CreditLineItem toCreditLineItem() {
+        return new CreditLineItem(this.transactionId, this.creditType, this.money, Instant.now());
     }
 }
