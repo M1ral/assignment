@@ -1,23 +1,24 @@
 package com.netflix.billing.bank.controller.wire.credit;
 
-import com.netflix.billing.bank.controller.wire.Money;
+import com.netflix.billing.bank.controller.wire.account.LineItem;
+import com.netflix.billing.bank.controller.wire.account.Money;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreditLineItem {
+public class CreditLineItem implements LineItem {
 
     private String transactionId;
     private CreditType creditType;
-    private Money amount;
+    private Money money;
     private Instant transactionDate;
     private List<String> invoiceIdList; // list of invoieIds credit is debited to
 
-    public CreditLineItem(String transactionId, CreditType creditType, Money amount, Instant transactionDate) {
+    public CreditLineItem(String transactionId, CreditType creditType, Money money, Instant transactionDate) {
         this.transactionId = transactionId;
         this.creditType = creditType;
-        this.amount = amount;
+        this.money = money;
         this.transactionDate = transactionDate;
         this.invoiceIdList = new ArrayList<>();
     }
@@ -45,12 +46,12 @@ public class CreditLineItem {
         this.creditType = creditType;
     }
 
-    public Money getAmount() {
-        return amount;
+    public Money getMoney() {
+        return money;
     }
 
-    public void setAmount(Money amount) {
-        this.amount = amount;
+    public void setMoney(Money money) {
+        this.money = money;
     }
 
     public Instant getTransactionDate() {

@@ -1,10 +1,10 @@
 package com.netflix.billing.bank.controller;
 
-import com.netflix.billing.bank.controller.wire.BankAccountsManager;
+import com.netflix.billing.bank.controller.wire.account.AccountManager;
 import com.netflix.billing.bank.controller.wire.credit.CreditAmount;
 import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
 import com.netflix.billing.bank.controller.wire.debit.DebitHistory;
-import com.netflix.billing.bank.controller.wire.CustomerBalance;
+import com.netflix.billing.bank.controller.wire.account.CustomerBalance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class BankController {
 
     @Autowired
-    public BankAccountsManager bankAccountsManager;
+    public AccountManager accountManager;
 
     /**
      *
@@ -28,7 +28,7 @@ public class BankController {
         if (null == customerId || customerId.isEmpty()) {
             return null; // throw error
         }
-        return bankAccountsManager.getBalance(customerId);
+        return accountManager.getBalance(customerId);
     }
 
     /**
@@ -42,7 +42,7 @@ public class BankController {
         if (null == customerId || customerId.isEmpty() || null == creditAmount) {
             return null; // throw error
         }
-        return bankAccountsManager.addCredit(customerId, creditAmount.toCreditLineItem());
+        return accountManager.addCredit(customerId, creditAmount);
     }
 
     /**
@@ -52,11 +52,11 @@ public class BankController {
      * @return How much money is left in the customer's account after the debit amount was deducted from balance.
      */
     @PostMapping("customer/{customerId}/debit")
-    public CustomerBalance debit(@PathVariable String customerId, @RequestBody DebitAmount debitAmount) {
+    public CustomerBalance debit(@PathVariable String customerId, @RequestBody DebitAmount debitAmount) throws Exception {
         if (null == customerId || customerId.isEmpty()) {
             return null;
         }
-        return bankAccountsManager.addDebit(customerId, debitAmount.toDebitLineItem());
+        return accountManager.addDebit(customerId, debitAmount);
     }
 
     /**
@@ -69,6 +69,6 @@ public class BankController {
         if (null == customerId || customerId.isEmpty()) {
             return null; // throw error
         }
-        return bankAccountsManager.getDebitHistory(customerId);
+        return accountManager.getDebitHistory(customerId);
     }
 }

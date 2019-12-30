@@ -1,6 +1,6 @@
 package com.netflix.billing.bank.controller.wire.debit;
 
-import com.netflix.billing.bank.controller.wire.Money;
+import com.netflix.billing.bank.controller.wire.account.Money;
 
 import java.time.Instant;
 
@@ -11,6 +11,11 @@ import java.time.Instant;
 public class DebitAmount {
     private String invoiceId; //Id denoting the receipt for the charge. Should be unique for a given customer.
     private Money money;
+
+    public DebitAmount(String invoiceId, Money money) {
+        this.invoiceId = invoiceId;
+        this.money = money;
+    }
 
     public String getInvoiceId() {
         return invoiceId;

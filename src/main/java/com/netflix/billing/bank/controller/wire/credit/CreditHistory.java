@@ -1,8 +1,17 @@
 package com.netflix.billing.bank.controller.wire.credit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CreditHistory {
+
+    public CreditHistory() {
+        this.creditHistory = new ArrayList<>();
+    }
+
+    public void add(CreditLineItem creditLineItem) {
+        this.creditHistory.add(creditLineItem);
+    }
 
     private List<CreditLineItem> creditHistory;
 

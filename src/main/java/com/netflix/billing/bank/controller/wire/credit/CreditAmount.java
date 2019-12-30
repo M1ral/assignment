@@ -1,6 +1,6 @@
 package com.netflix.billing.bank.controller.wire.credit;
 
-import com.netflix.billing.bank.controller.wire.Money;
+import com.netflix.billing.bank.controller.wire.account.Money;
 
 import java.time.Instant;
 
@@ -42,9 +42,10 @@ public class CreditAmount {
         this.creditType = creditType;
     }
 
-    public CreditAmount(CreditType creditType, Money money) {
+    public CreditAmount(CreditType creditType, Money money, String transactionId) {
         this.creditType = creditType;
         this.money = money;
+        this.transactionId = transactionId;
     }
 
     public CreditLineItem toCreditLineItem() {

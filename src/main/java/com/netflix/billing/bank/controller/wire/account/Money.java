@@ -1,4 +1,4 @@
-package com.netflix.billing.bank.controller.wire;
+package com.netflix.billing.bank.controller.wire.account;
 
 import java.util.Objects;
 
