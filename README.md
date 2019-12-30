@@ -86,7 +86,7 @@ In case you want to use the command line, here are some useful commands that you
 **A** Credits and Debits are supposed to persist only in memory. They can be wiped away on app restart.  
 
 **Q** Can I bring in dependencies from Maven central?
-**A** Yes.
+**A** Yes..
 
 
 
