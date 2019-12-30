@@ -1,8 +1,8 @@
 package com.netflix.billing.bank.controller.wire.debit;
 
 import com.netflix.billing.bank.controller.wire.account.LineItem;
-import com.netflix.billing.bank.controller.wire.credit.CreditType;
 import com.netflix.billing.bank.controller.wire.account.Money;
+import com.netflix.billing.bank.controller.wire.credit.CreditType;
 
 import java.time.Instant;
 

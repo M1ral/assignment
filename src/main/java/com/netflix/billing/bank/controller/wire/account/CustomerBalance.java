@@ -1,8 +1,6 @@
 package com.netflix.billing.bank.controller.wire.account;
 
-import com.netflix.billing.bank.controller.wire.credit.CreditLineItem;
 import com.netflix.billing.bank.controller.wire.credit.CreditType;
-import com.netflix.billing.bank.controller.wire.debit.DebitLineItem;
 
 import java.util.ArrayList;
 import java.util.Arrays;

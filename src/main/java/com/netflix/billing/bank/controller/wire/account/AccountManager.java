@@ -52,7 +52,7 @@ public class AccountManager {
      * @param debitAmount
      * @return CustomerBalance
      */
-    public CustomerBalance addDebit(String customerId, DebitAmount debitAmount) throws Exception {
+    public CustomerBalance addDebit(String customerId, DebitAmount debitAmount) {
         if (null == customerId || customerId.isEmpty() || null == debitAmount) {
             return null;
         }

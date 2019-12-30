@@ -7,6 +7,7 @@ import com.netflix.billing.bank.controller.wire.account.Money;
 import com.netflix.billing.bank.controller.wire.credit.CreditAmount;
 import com.netflix.billing.bank.controller.wire.credit.CreditType;
 import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
+import com.netflix.billing.bank.controller.wire.debit.DebitHistory;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,6 +36,73 @@ public class BillingbankApplicationTests {
 	@After
 	public void afterTest() {
 		accountManager.clear();
+	}
+
+	@Test(expected = Error.class)
+	public void testNullInputsPostCredit() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		BigDecimal amount = BigDecimal.TEN;
+		// when
+		CustomerBalance balance = bankController.postCredit(customer1, null);
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testInvalidInputsPostCredit() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		BigDecimal amount = BigDecimal.TEN;
+		// when
+		CustomerBalance balance = bankController
+				.postCredit(customer1, new CreditAmount(null, null, null));
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testNullInputsPostDebit() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		// when
+		CustomerBalance balance = bankController.debit(customer1, null);
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testInvalidInputsPostDebit() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		// when
+		CustomerBalance balance = bankController.debit(customer1, new DebitAmount("", null));
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testNullInputsGetBalance() {
+		// when
+		CustomerBalance balance = bankController.getBalance(null);
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testInvalidInputsGetBalance() {
+		// when
+		CustomerBalance balance = bankController.getBalance("");
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testNullInputsDebitHistory() {
+		// when
+		DebitHistory history = bankController.debitHistory(null);
+		fail("Test should have thrown invalid input error");
+	}
+
+	@Test(expected = Error.class)
+	public void testInvalidInputsDebitHistory() {
+		// when
+		DebitHistory history = bankController.debitHistory("");
+		fail("Test should have thrown invalid input error");
 	}
 
 	@Test
@@ -167,21 +235,94 @@ public class BillingbankApplicationTests {
 		assert balance.getBalanceAmounts().get(CASH).size() == 2;
 	}
 
+	@Test
+	public void testDebitHistory() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		BigDecimal creditAmountValue = BigDecimal.TEN;
+		// when
+		CustomerBalance balance = postCredits(2, 2, 2, customer1, creditAmountValue);
+		// dedupe credit
+		balance = postCredits(2, 2, 2, customer1, creditAmountValue);
+		// then
+		assert balance != null;
+		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
+		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
+		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
+
+		// given
+		String invoice1 = "INV_1";
+		BigDecimal debitAmountValue = BigDecimal.valueOf(35);
+		DebitAmount debitAmount = new DebitAmount(invoice1, new Money(debitAmountValue, USD.toString()));
+
+		// when
+		try {
+			balance = bankController.debit(customer1, debitAmount);
+		} catch (Exception e) {
+			fail("Error performing debit operation.");
+		}
+
+		// then
+		assert bankController.debitHistory(customer1).getDebits() != null;
+		assert bankController.debitHistory(customer1).getDebits().size() == 4;
+		assert balance.getBalanceAmounts().get(GIFTCARD).isEmpty() == true;
+		assert balance.getBalanceAmounts().get(PROMOTION).size() == 1;
+		assert balance.getBalanceAmounts().get(CASH).size() == 2;
+	}
+
+	@Test(expected = Error.class)
+	public void testInsufficientFundsPostCreditsAndDebit() {
+		// given
+		String customer1 = "CUSTOMER_1";
+		BigDecimal creditAmountValue = BigDecimal.TEN;
+		// when
+		CustomerBalance balance = postCredits(2, 2, 2, customer1, creditAmountValue);
+		// then
+		assert balance != null;
+		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
+		assert creditAmount.getAmount().compareTo(creditAmountValue) == 0;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
+		assert creditAmount.getAmount().compareTo(creditAmountValue) == 0;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
+
+		// given
+		String invoice1 = "INV_1";
+		BigDecimal debitAmountValue = BigDecimal.valueOf(100);
+		DebitAmount debitAmount = new DebitAmount(invoice1, new Money(debitAmountValue, USD.toString()));
+
+		// when
+		try {
+			balance = bankController.debit(customer1, debitAmount);
+		} catch (Exception e) {
+			fail("Error performing debit operation.");
+		}
+		fail("Test should have thrown Insufficient funds error.");
+	}
+
 	// Utility method to post credits
 	private CustomerBalance postCredits(int numGiftcard, int numPromo, int numCash, String customerId, BigDecimal amount) {
 		CustomerBalance balance = null;
+		// GIFTCARD
 		for (int i = 0; i < numGiftcard; i++) {
 			balance = bankController.postCredit(customerId,
 					new CreditAmount(GIFTCARD, new Money(amount, USD.toString()), "TX_"+i));
 			assert balance != null;
 			assert balance.getBalanceAmounts().get(GIFTCARD).get(i).getAmount().equals(amount);
 		}
+		// PROMOTION
 		for (int i = 0; i < numPromo; i++) {
 			balance = bankController.postCredit(customerId,
 					new CreditAmount(PROMOTION, new Money(amount, USD.toString()), "TX_"+i));
 			assert balance != null;
 			assert balance.getBalanceAmounts().get(PROMOTION).get(i).getAmount().equals(amount);
 		}
+		// CASH
 		for (int i = 0; i < numCash; i++) {
 			balance = bankController.postCredit(customerId,
 					new CreditAmount(CASH, new Money(amount, USD.toString()), "TX_"+i));

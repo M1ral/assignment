@@ -1,10 +1,11 @@
 package com.netflix.billing.bank.controller;
 
 import com.netflix.billing.bank.controller.wire.account.AccountManager;
+import com.netflix.billing.bank.controller.wire.account.AmountValidator;
+import com.netflix.billing.bank.controller.wire.account.CustomerBalance;
 import com.netflix.billing.bank.controller.wire.credit.CreditAmount;
 import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
 import com.netflix.billing.bank.controller.wire.debit.DebitHistory;
-import com.netflix.billing.bank.controller.wire.account.CustomerBalance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,9 @@ public class BankController {
     @Autowired
     public AccountManager accountManager;
 
+    @Autowired
+    public AmountValidator validator;
+
     /**
      *
      * @param customerId String id representing the customer/account id.
@@ -26,7 +30,7 @@ public class BankController {
     @GetMapping("customer/{customerId}/balance")
     public CustomerBalance getBalance(@PathVariable String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            return null; // throw error
+            throw new Error("Invalid input parameters.");
         }
         return accountManager.getBalance(customerId);
     }
@@ -39,8 +43,9 @@ public class BankController {
      */
     @PostMapping("customer/{customerId}/credit")
     public CustomerBalance postCredit(@PathVariable String customerId, @RequestBody CreditAmount creditAmount) {
-        if (null == customerId || customerId.isEmpty() || null == creditAmount) {
-            return null; // throw error
+        if (null == customerId || customerId.isEmpty() ||
+                null == creditAmount || !validator.validateCredit(creditAmount)) {
+            throw new Error("Invalid input parameters.");
         }
         return accountManager.addCredit(customerId, creditAmount);
     }
@@ -52,9 +57,9 @@ public class BankController {
      * @return How much money is left in the customer's account after the debit amount was deducted from balance.
      */
     @PostMapping("customer/{customerId}/debit")
-    public CustomerBalance debit(@PathVariable String customerId, @RequestBody DebitAmount debitAmount) throws Exception {
-        if (null == customerId || customerId.isEmpty()) {
-            return null;
+    public CustomerBalance debit(@PathVariable String customerId, @RequestBody DebitAmount debitAmount) {
+        if (null == customerId || customerId.isEmpty() || !validator.validateDebit(debitAmount)) {
+            throw new Error("Invalid input parameters.");
         }
         return accountManager.addDebit(customerId, debitAmount);
     }
@@ -67,7 +72,7 @@ public class BankController {
     @GetMapping("customer/{customerId}/history")
     public DebitHistory debitHistory(@PathVariable String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            return null; // throw error
+            throw new Error("Invalid input parameters.");
         }
         return accountManager.getDebitHistory(customerId);
     }

@@ -82,13 +82,12 @@ public class Account {
         // add CreditLineItem
         creditLineItems.add(creditLineItem);
         creditsMap.put(creditType, creditLineItems);
-        // update total credit amaunt
-        // totalCreditAmount += creditLineItem.getMoney().getAmount();
-        totalCreditAmount = totalCreditAmount.add(creditLineItem.getMoney().getAmount());
 
-        // add to the history
+        // update total credit amaunt
+        totalCreditAmount = totalCreditAmount.add(creditLineItem.getMoney().getAmount());
+        // add credit to the history
         this.getCreditHistory().add(creditLineItem);
-        // mark processed
+        // mark credit processed
         Set<String> transactionIds = processedTransactions.getOrDefault(creditType, new HashSet<>());
         transactionIds.add(creditLineItem.getTransactionId());
         processedTransactions.put(creditType, transactionIds);
@@ -98,7 +97,7 @@ public class Account {
      * Record debit to customer account
      * @param debitAmount
      */
-    public synchronized void debit(DebitAmount debitAmount) throws Exception {
+    public synchronized void debit(DebitAmount debitAmount) {
         if (null == debitAmount) {
             return;
         }
@@ -109,7 +108,7 @@ public class Account {
 
         BigDecimal debitAmountValue = debitAmount.getMoney().getAmount();
         if (debitAmountValue.compareTo(totalCreditAmount) > 0) { // Error scenario
-            throw new Exception("Insufficient balance");
+            throw new Error("Insufficient balance");
         }
 
         outer : for (CreditType creditType : CreditType.values()) {
