@@ -33,7 +33,7 @@ public class AccountManager {
      */
     public CustomerBalance addCredit(String customerId, CreditAmount creditAmount) {
         if (null == customerId || customerId.isEmpty() || null == creditAmount) {
-            return null;
+            throw new Error("Invalid input parameters for credit");
         }
 
         // credit the customer account
@@ -54,7 +54,7 @@ public class AccountManager {
      */
     public CustomerBalance addDebit(String customerId, DebitAmount debitAmount) {
         if (null == customerId || customerId.isEmpty() || null == debitAmount) {
-            return null;
+            throw new Error("Invalid input parameters for debit");
         }
 
         // credit the customer account
@@ -74,7 +74,7 @@ public class AccountManager {
      */
     public CustomerBalance getBalance(String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            return null;
+            throw new Error("Invalid customer Id");
         }
         return customerIdToAccountMap.get(customerId).getBalance();
     }
@@ -87,7 +87,7 @@ public class AccountManager {
      */
     public CreditHistory getCreditHistory(String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            return null;
+            throw new Error("Invalid customer Id");
         }
         return customerIdToAccountMap.get(customerId).getCreditHistory();
     }
@@ -100,7 +100,7 @@ public class AccountManager {
      */
     public DebitHistory getDebitHistory(String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            return null;
+            throw new Error("Invalid customer Id");
         }
         return customerIdToAccountMap.get(customerId).getDebitHistory();
     }
