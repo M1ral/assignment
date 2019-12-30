@@ -431,26 +431,4 @@ public class BillingbankApplicationTests {
 
 		return balance;
 	}
-
-	/**
-	 * Execute callableTask using ExecutorService
-	 * @param callableTask
-	 * @return CustomerBalance
-	 */
-	/*private CustomerBalance execute(Callable<CustomerBalance> callableTask) {
-		if (null == callableTask) {
-			throw new Error("Invalid callable function to execute");
-		}
-
-		Future<CustomerBalance> result = executorService.submit(callableTask);
-		CustomerBalance balance;
-		try {
-			balance = result.get();
-		} catch (InterruptedException e) {
-			throw new Error("Credit Interrupted.");
-		} catch (ExecutionException e) {
-			throw new Error("Credit Interrupted.");
-		}
-		return balance;
-	}*/
 }
