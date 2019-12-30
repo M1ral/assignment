@@ -1,6 +1,7 @@
 package com.netflix.billing.bank;
 
 import com.netflix.billing.bank.controller.BankController;
+import com.netflix.billing.bank.controller.wire.account.AccountExecutorService;
 import com.netflix.billing.bank.controller.wire.account.AccountManager;
 import com.netflix.billing.bank.controller.wire.account.CustomerBalance;
 import com.netflix.billing.bank.controller.wire.account.Money;
@@ -18,6 +19,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.netflix.billing.bank.controller.wire.account.Currency.USD;
 import static com.netflix.billing.bank.controller.wire.credit.CreditType.*;
@@ -33,10 +37,15 @@ public class BillingbankApplicationTests {
 	@Autowired
 	public AccountManager accountManager;
 
+	@Autowired
+	public AccountExecutorService accountExecutorService;
+
 	@After
 	public void afterTest() {
 		accountManager.clear();
 	}
+
+	private ExecutorService executorService = Executors.newFixedThreadPool(100);
 
 	@Test(expected = Error.class)
 	public void testNullInputsPostCredit() {
@@ -198,6 +207,23 @@ public class BillingbankApplicationTests {
 		assert creditAmount.getCurrency().equals(USD.toString());
 		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
 
+		// when - use same transactionIds for customer 2
+		String customer2 = "CUSTOMER_2";
+		balance = postCredits(2, 2, 2, customer2, creditAmountValue);
+		// then
+		assert balance != null;
+		assert balance.getBalanceAmounts().get(GIFTCARD).size() == 2;
+		assert balance.getBalanceAmounts().get(PROMOTION).size() == 2;
+		assert balance.getBalanceAmounts().get(CASH).size() == 2;
+
+		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
+		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
+		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getCurrency().equals(USD.toString());
+		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
+
 		// given
 		String invoice1 = "INV_1";
 		BigDecimal debitAmountValue = BigDecimal.valueOf(35);
@@ -233,6 +259,19 @@ public class BillingbankApplicationTests {
 		assert balance.getBalanceAmounts().get(GIFTCARD).isEmpty() == true;
 		assert balance.getBalanceAmounts().get(PROMOTION).size() == 1;
 		assert balance.getBalanceAmounts().get(CASH).size() == 2;
+
+		// when - use same invoiceId for customer2
+		try {
+			balance = bankController.debit(customer2, debitAmount);
+		} catch (Exception e) {
+			fail("Error performing debit operation.");
+		}
+
+		// then
+		assert bankController.debitHistory(customer1).getDebits() != null;
+		assert balance.getBalanceAmounts().get(GIFTCARD).isEmpty() == true;
+		assert balance.getBalanceAmounts().get(PROMOTION).size() == 1;
+		assert balance.getBalanceAmounts().get(CASH).size() == 2;
 	}
 
 	@Test
@@ -247,10 +286,10 @@ public class BillingbankApplicationTests {
 		// then
 		assert balance != null;
 		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
-		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getAmount().equals(creditAmountValue);
 		assert creditAmount.getCurrency().equals(USD.toString());
 		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
-		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getAmount().equals(creditAmountValue);
 		assert creditAmount.getCurrency().equals(USD.toString());
 		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
 
@@ -305,6 +344,60 @@ public class BillingbankApplicationTests {
 		fail("Test should have thrown Insufficient funds error.");
 	}
 
+	@Test
+	public void testPostCreditDebitMultiThread() {
+		// given
+		String customer1 = "CUSTOMER_1", invoice1 = "INV_1", invoice2 = "INV_2";
+		String customer2 = "CUSTOMER_2", invoice3 = "INV_3", invoice4 = "INV_4";
+		BigDecimal creditAmountValue = BigDecimal.TEN;
+
+		// when
+		Callable<CustomerBalance> postCreditCustomer1 = () -> {
+			return postCredits(3, 4, 5, customer1, creditAmountValue); // 120$ credit
+		};
+		Callable<CustomerBalance> postDebitCustomer1_1 = () -> {
+			return bankController.debit(customer1,
+					new DebitAmount(invoice1, new Money(BigDecimal.valueOf(35), USD.toString())));
+		};
+		Callable<CustomerBalance> postDebitCustomer1_2 = () -> {
+			return bankController.debit(customer1,
+					new DebitAmount(invoice2, new Money(BigDecimal.valueOf(25), USD.toString()))); // total 60$ debtit
+		};
+		Callable<CustomerBalance> postCreditCustomer2 = () -> {
+			return postCredits(3, 4, 5, customer2, creditAmountValue); // 120$ credit
+		};
+		Callable<CustomerBalance> postDebitCustomer2_1 = () -> {
+			return bankController.debit(customer2,
+					new DebitAmount(invoice3, new Money(BigDecimal.valueOf(35), USD.toString())));
+		};
+		Callable<CustomerBalance> postDebitCustomer2_2 = () -> {
+			return bankController.debit(customer2,
+					new DebitAmount(invoice4, new Money(BigDecimal.valueOf(45), USD.toString()))); // total 80 $ debit
+		};
+
+		// execute postCredit and postDebit in multiThreaded mode
+		accountExecutorService.execute(postCreditCustomer1);
+		accountExecutorService.execute(postCreditCustomer2);
+		accountExecutorService.execute(postDebitCustomer2_2);
+		accountExecutorService.execute(postDebitCustomer1_2);
+		CustomerBalance balance_customer1 = accountExecutorService.execute(postDebitCustomer1_1);
+		CustomerBalance balance_customer2 = accountExecutorService.execute(postDebitCustomer2_1);
+
+		// then customer1
+		assert balance_customer1 != null;
+		assert balance_customer1.getBalanceAmounts().get(GIFTCARD).isEmpty() == true;
+		assert balance_customer1.getBalanceAmounts().get(PROMOTION).size() == 1;
+		assert balance_customer1.getBalanceAmounts().get(CASH).size() == 5;
+		assert bankController.debitHistory(customer1).getDebits().size() == 7;
+
+		// then customer2
+		assert balance_customer2 != null;
+		assert balance_customer2.getBalanceAmounts().get(GIFTCARD).isEmpty() == true;
+		assert balance_customer2.getBalanceAmounts().get(PROMOTION).isEmpty() == true;
+		assert balance_customer1.getBalanceAmounts().get(CASH).size() == 5;
+		assert bankController.debitHistory(customer2).getDebits().size() == 9;
+	}
+
 	// Utility method to post credits
 	private CustomerBalance postCredits(int numGiftcard, int numPromo, int numCash, String customerId, BigDecimal amount) {
 		CustomerBalance balance = null;
@@ -338,5 +431,26 @@ public class BillingbankApplicationTests {
 
 		return balance;
 	}
-}
 
+	/**
+	 * Execute callableTask using ExecutorService
+	 * @param callableTask
+	 * @return CustomerBalance
+	 */
+	/*private CustomerBalance execute(Callable<CustomerBalance> callableTask) {
+		if (null == callableTask) {
+			throw new Error("Invalid callable function to execute");
+		}
+
+		Future<CustomerBalance> result = executorService.submit(callableTask);
+		CustomerBalance balance;
+		try {
+			balance = result.get();
+		} catch (InterruptedException e) {
+			throw new Error("Credit Interrupted.");
+		} catch (ExecutionException e) {
+			throw new Error("Credit Interrupted.");
+		}
+		return balance;
+	}*/
+}

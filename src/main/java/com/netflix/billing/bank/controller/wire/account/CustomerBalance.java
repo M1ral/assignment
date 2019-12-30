@@ -47,4 +47,3 @@ public class CustomerBalance {
         balanceAmounts.put(creditType, list);
     }
 }
-

@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 
 // Customer Bank Account
 public class Account {
-
     // credits
     private Map<CreditType, List<CreditLineItem>> creditsMap;
     // debits
@@ -25,10 +24,12 @@ public class Account {
     private CreditHistory creditHistory;
     // debit history
     private DebitHistory debitHistory;
-    // total credit amount
+    // total credit amount - running balance
     private volatile BigDecimal totalCreditAmount;
-    private Map<CreditType, Set<String>> processedTransactions; // for dedupe credits
-    private Set<String> processedInvoices; // for dedupe debits
+    // customerId -> (creditType -> set of transactions)
+    private Map<String, Map<CreditType, Set<String>>> processedTransactionsMap; // for dedupe credits
+    // customerId -> set of invoiceId
+    private Map<String, Set<String>> processedInvoicesMap; // for dedupe debits
 
     // new Account constructor
     public Account() {
@@ -37,12 +38,13 @@ public class Account {
         creditHistory = new CreditHistory();
         debitHistory = new DebitHistory();
         totalCreditAmount = new BigDecimal(0);
-        processedTransactions = new ConcurrentHashMap<>();
-        processedInvoices = Collections.synchronizedSet(new HashSet<>());
+        processedTransactionsMap = new ConcurrentHashMap<>();
+        processedInvoicesMap = new ConcurrentHashMap<>();
     }
 
     /**
      * Returns current snapshot of {@link CustomerBalance}
+     *
      * @return CustomerBalance
      */
     public CustomerBalance getBalance() {
@@ -62,23 +64,24 @@ public class Account {
 
     /**
      * Record credit to customer account
+     *
      * @param creditAmount
      */
-    public synchronized void credit(CreditAmount creditAmount) {
-        if (null == creditAmount) {
-            return;
+    public void credit(String customerId, CreditAmount creditAmount) {
+        if (null == creditAmount || null == customerId || customerId.isEmpty()) {
+            throw new Error("Invalid input parameters");
         }
 
-        // dedupe check
-        if (processedTransactions.containsKey(creditAmount.getCreditType()) &&
-                processedTransactions.get(creditAmount.getCreditType()).contains(creditAmount.getTransactionId())) {
+        CreditType creditType = creditAmount.getCreditType();
+        // dedupe credit
+        if (processedTransactionsMap.containsKey(customerId) &&
+                processedTransactionsMap.get(customerId).containsKey(creditType) &&
+                processedTransactionsMap.get(customerId).get(creditType).contains(creditAmount.getTransactionId())) {
             return;
         }
 
         CreditLineItem creditLineItem = creditAmount.toCreditLineItem();
-        CreditType creditType = creditLineItem.getCreditType();
         List<CreditLineItem> creditLineItems = creditsMap.getOrDefault(creditType, new ArrayList<>());
-
         // add CreditLineItem
         creditLineItems.add(creditLineItem);
         creditsMap.put(creditType, creditLineItems);
@@ -87,22 +90,29 @@ public class Account {
         totalCreditAmount = totalCreditAmount.add(creditLineItem.getMoney().getAmount());
         // add credit to the history
         this.getCreditHistory().add(creditLineItem);
-        // mark credit processed
-        Set<String> transactionIds = processedTransactions.getOrDefault(creditType, new HashSet<>());
+
+        // mark credit processed (transactionId for given creditType for given customer)
+        Map<CreditType, Set<String>> transactionIdMap =
+                processedTransactionsMap.getOrDefault(customerId, new ConcurrentHashMap<>());
+        Set<String> transactionIds = transactionIdMap.getOrDefault(creditType, new HashSet<>());
         transactionIds.add(creditLineItem.getTransactionId());
-        processedTransactions.put(creditType, transactionIds);
+        transactionIdMap.put(creditType, transactionIds);
+        processedTransactionsMap.put(customerId, transactionIdMap);
     }
 
     /**
      * Record debit to customer account
+     *
+     * @param customerId
      * @param debitAmount
      */
-    public synchronized void debit(DebitAmount debitAmount) {
+    public void debit(String customerId, DebitAmount debitAmount) {
         if (null == debitAmount) {
             return;
         }
         // dedupe debit
-        if (processedInvoices.contains(debitAmount.getInvoiceId())) {
+        if (processedInvoicesMap.containsKey(customerId) &&
+                processedInvoicesMap.get(customerId).contains(debitAmount.getInvoiceId())) {
             return;
         }
 
@@ -111,12 +121,13 @@ public class Account {
             throw new Error("Insufficient balance");
         }
 
-        outer : for (CreditType creditType : CreditType.values()) {
+        outerloop:
+        for (CreditType creditType : CreditType.values()) {
             if (!creditsMap.containsKey(creditType)) {
                 continue;
             }
 
-            for (Iterator<CreditLineItem> it = creditsMap.get(creditType).iterator(); it.hasNext();) {
+            for (Iterator<CreditLineItem> it = creditsMap.get(creditType).iterator(); it.hasNext(); ) {
                 CreditLineItem creditLineItem = it.next();
                 BigDecimal currentCreditAmount = creditLineItem.getMoney().getAmount();
                 creditLineItem.getInvoiceIdList().add(debitAmount.getInvoiceId()); // invoiceId
@@ -145,11 +156,14 @@ public class Account {
                 this.getDebitHistory().add(debitLineItem);
 
                 if (debitAmountValue.compareTo(BigDecimal.ZERO) == 0) {  // consumed credits for given DebitLineItem
-                    break outer; // break outer for loop
+                    break outerloop; // break outerloop for loop
                 }
             }
         }
-        processedInvoices.add(debitAmount.getInvoiceId());
+        // mark debit processed (invoiceId for given customer)
+        Set<String> invoiceIds = processedInvoicesMap.getOrDefault(customerId, new HashSet<>());
+        invoiceIds.add(debitAmount.getInvoiceId());
+        processedInvoicesMap.put(customerId, invoiceIds);
     }
 
     public CreditHistory getCreditHistory() {

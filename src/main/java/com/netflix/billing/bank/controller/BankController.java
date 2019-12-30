@@ -47,7 +47,7 @@ public class BankController {
                 null == creditAmount || !validator.validateCredit(creditAmount)) {
             throw new Error("Invalid input parameters.");
         }
-        return accountManager.addCredit(customerId, creditAmount);
+        return accountManager.credit(customerId, creditAmount);
     }
 
     /**
@@ -61,7 +61,7 @@ public class BankController {
         if (null == customerId || customerId.isEmpty() || !validator.validateDebit(debitAmount)) {
             throw new Error("Invalid input parameters.");
         }
-        return accountManager.addDebit(customerId, debitAmount);
+        return accountManager.debit(customerId, debitAmount);
     }
 
     /**

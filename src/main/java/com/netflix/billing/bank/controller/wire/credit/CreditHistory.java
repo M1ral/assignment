@@ -13,7 +13,7 @@ public class CreditHistory {
         this.creditHistory.add(creditLineItem);
     }
 
-    private List<CreditLineItem> creditHistory;
+    private volatile List<CreditLineItem> creditHistory;
 
     public List<CreditLineItem> getCreditHistory() {
         return creditHistory;
