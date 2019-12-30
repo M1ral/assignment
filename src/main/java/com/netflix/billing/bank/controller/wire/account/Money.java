@@ -1,5 +1,6 @@
 package com.netflix.billing.bank.controller.wire.account;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Money {
@@ -7,19 +8,19 @@ public class Money {
     public Money() {
     }
 
-    public Money(Long amount, String currency) {
+    public Money(BigDecimal amount, String currency) {
         this.amount = amount;
         this.currency = currency;
     }
 
-    private Long amount;
+    private BigDecimal amount;
     private String currency;
 
-    public Long getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(Long amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 

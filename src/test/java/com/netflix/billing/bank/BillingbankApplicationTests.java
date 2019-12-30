@@ -1,17 +1,20 @@
 package com.netflix.billing.bank;
 
 import com.netflix.billing.bank.controller.BankController;
+import com.netflix.billing.bank.controller.wire.account.AccountManager;
 import com.netflix.billing.bank.controller.wire.account.CustomerBalance;
 import com.netflix.billing.bank.controller.wire.account.Money;
 import com.netflix.billing.bank.controller.wire.credit.CreditAmount;
 import com.netflix.billing.bank.controller.wire.credit.CreditType;
 import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -26,25 +29,28 @@ public class BillingbankApplicationTests {
 	@Autowired
 	public BankController bankController;
 
-	@Test
-	public void contextLoads() {
-		assert bankController.getBalance(String.valueOf(Integer.MIN_VALUE)) == null;
+	@Autowired
+	public AccountManager accountManager;
+
+	@After
+	public void afterTest() {
+		accountManager.clear();
 	}
 
 	@Test
 	public void testPostTwoCredits() {
 		// given
 		String customer1 = "CUSTOMER_1";
-		long amount = 10l;
+		BigDecimal amount = BigDecimal.TEN;
 		// when
 		CustomerBalance balance = postCredits(2, 0, 0, customer1, amount);
 		// then
 		assert balance != null;
 		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
-		assert creditAmount.getAmount() == amount;
+		assert creditAmount.getAmount().compareTo(amount) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
-		assert creditAmount.getAmount() == amount;
+		assert creditAmount.getAmount().compareTo(amount) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
 	}
@@ -53,22 +59,22 @@ public class BillingbankApplicationTests {
 	public void testPostCreditsAndDebit() {
 		// given
 		String customer1 = "CUSTOMER_1";
-		long creditAmountValue = 10l;
+		BigDecimal creditAmountValue = BigDecimal.TEN;
 		// when
 		CustomerBalance balance = postCredits(2, 2, 2, customer1, creditAmountValue);
 		// then
 		assert balance != null;
 		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
-		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getAmount().compareTo(creditAmountValue) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
-		assert creditAmount.getAmount() == creditAmountValue;
+		assert creditAmount.getAmount().compareTo(creditAmountValue) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
 
 		// given
 		String invoice1 = "INV_1";
-		long debitAmountValue = 35l;
+		BigDecimal debitAmountValue = BigDecimal.valueOf(35);
 		DebitAmount debitAmount = new DebitAmount(invoice1, new Money(debitAmountValue, USD.toString()));
 
 		// when
@@ -89,7 +95,7 @@ public class BillingbankApplicationTests {
 	public void testDedupePostTwoCredits() {
 		// given
 		String customer1 = "CUSTOMER_1";
-		long amount = 10l;
+		BigDecimal amount = BigDecimal.TEN;
 		// when
 		CustomerBalance balance = postCredits(2, 0, 0, customer1, amount);
 		// dedupe
@@ -97,10 +103,10 @@ public class BillingbankApplicationTests {
 		// then
 		assert balance != null;
 		Money creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(0);
-		assert creditAmount.getAmount() == amount;
+		assert creditAmount.getAmount().compareTo(amount) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		creditAmount = balance.getBalanceAmounts().get(GIFTCARD).get(1);
-		assert creditAmount.getAmount() == amount;
+		assert creditAmount.getAmount().compareTo(amount) == 0;
 		assert creditAmount.getCurrency().equals(USD.toString());
 		assert bankController.debitHistory(customer1).getDebits().isEmpty() == true;
 	}
@@ -109,7 +115,7 @@ public class BillingbankApplicationTests {
 	public void testDedupePostCreditsAndDebit() {
 		// given
 		String customer1 = "CUSTOMER_1";
-		long creditAmountValue = 10l;
+		BigDecimal creditAmountValue = BigDecimal.TEN;
 		// when
 		CustomerBalance balance = postCredits(2, 2, 2, customer1, creditAmountValue);
 		// dedupe credit
@@ -126,7 +132,7 @@ public class BillingbankApplicationTests {
 
 		// given
 		String invoice1 = "INV_1";
-		long debitAmountValue = 35l;
+		BigDecimal debitAmountValue = BigDecimal.valueOf(35);
 		DebitAmount debitAmount = new DebitAmount(invoice1, new Money(debitAmountValue, USD.toString()));
 
 		// when
@@ -162,7 +168,7 @@ public class BillingbankApplicationTests {
 	}
 
 	// Utility method to post credits
-	private CustomerBalance postCredits(int numGiftcard, int numPromo, int numCash, String customerId, long amount) {
+	private CustomerBalance postCredits(int numGiftcard, int numPromo, int numCash, String customerId, BigDecimal amount) {
 		CustomerBalance balance = null;
 		for (int i = 0; i < numGiftcard; i++) {
 			balance = bankController.postCredit(customerId,

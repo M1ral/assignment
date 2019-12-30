@@ -18,6 +18,12 @@ public class AccountManager {
     // CustomerId to their Accounts map
     private Map<String, Account> customerIdToAccountMap = new ConcurrentHashMap<>();
 
+    // for junits
+    public void clear() {
+        customerIdToAccountMap.clear();
+        customerIdToAccountMap = new ConcurrentHashMap<>();
+    }
+
     /**
      * Adds credit to the account for given customerId
      *
@@ -68,7 +74,7 @@ public class AccountManager {
      */
     public CustomerBalance getBalance(String customerId) {
         if (null == customerId || customerId.isEmpty()) {
-            // throw new Exception("Invalid customer Id");
+            return null;
         }
         return customerIdToAccountMap.get(customerId).getBalance();
     }

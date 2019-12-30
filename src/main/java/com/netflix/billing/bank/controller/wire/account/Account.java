@@ -8,6 +8,7 @@ import com.netflix.billing.bank.controller.wire.debit.DebitAmount;
 import com.netflix.billing.bank.controller.wire.debit.DebitHistory;
 import com.netflix.billing.bank.controller.wire.debit.DebitLineItem;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,7 +26,7 @@ public class Account {
     // debit history
     private DebitHistory debitHistory;
     // total credit amount
-    private volatile long totalCreditAmount;
+    private volatile BigDecimal totalCreditAmount;
     private Map<CreditType, Set<String>> processedTransactions; // for dedupe credits
     private Set<String> processedInvoices; // for dedupe debits
 
@@ -35,7 +36,7 @@ public class Account {
         debitsList = Collections.synchronizedList(new ArrayList<>());
         creditHistory = new CreditHistory();
         debitHistory = new DebitHistory();
-        totalCreditAmount = 0l;
+        totalCreditAmount = new BigDecimal(0);
         processedTransactions = new ConcurrentHashMap<>();
         processedInvoices = Collections.synchronizedSet(new HashSet<>());
     }
@@ -82,7 +83,8 @@ public class Account {
         creditLineItems.add(creditLineItem);
         creditsMap.put(creditType, creditLineItems);
         // update total credit amaunt
-        totalCreditAmount += creditLineItem.getMoney().getAmount();
+        // totalCreditAmount += creditLineItem.getMoney().getAmount();
+        totalCreditAmount = totalCreditAmount.add(creditLineItem.getMoney().getAmount());
 
         // add to the history
         this.getCreditHistory().add(creditLineItem);
@@ -105,8 +107,8 @@ public class Account {
             return;
         }
 
-        long debitAmountValue = debitAmount.getMoney().getAmount();
-        if (debitAmountValue > totalCreditAmount) { // Error scenario
+        BigDecimal debitAmountValue = debitAmount.getMoney().getAmount();
+        if (debitAmountValue.compareTo(totalCreditAmount) > 0) { // Error scenario
             throw new Exception("Insufficient balance");
         }
 
@@ -117,19 +119,20 @@ public class Account {
 
             for (Iterator<CreditLineItem> it = creditsMap.get(creditType).iterator(); it.hasNext();) {
                 CreditLineItem creditLineItem = it.next();
-                long currentCreditAmount = creditLineItem.getMoney().getAmount();
+                BigDecimal currentCreditAmount = creditLineItem.getMoney().getAmount();
                 creditLineItem.getInvoiceIdList().add(debitAmount.getInvoiceId()); // invoiceId
 
                 // current credit amount <= debit amount, consume whole credit
-                if (currentCreditAmount <= debitAmountValue) {
-                    debitAmountValue -= currentCreditAmount;
-                    totalCreditAmount -= currentCreditAmount;
+                int cmp = currentCreditAmount.compareTo(debitAmountValue);
+                if (cmp <= 0) {
+                    debitAmountValue = debitAmountValue.subtract(currentCreditAmount);
+                    totalCreditAmount = totalCreditAmount.subtract(currentCreditAmount);
                     it.remove(); // remove current CreditLineItem
                 } else {
                     // current credit amount > debit amount, consume partial credit
-                    currentCreditAmount -= debitAmountValue;
-                    totalCreditAmount -= debitAmountValue;
-                    debitAmountValue = 0;
+                    currentCreditAmount = currentCreditAmount.subtract(debitAmountValue);
+                    totalCreditAmount = totalCreditAmount.subtract(debitAmountValue);
+                    debitAmountValue = new BigDecimal(0);
                     creditLineItem.getMoney().setAmount(currentCreditAmount);
                 }
 
@@ -142,7 +145,7 @@ public class Account {
                 // add to the history
                 this.getDebitHistory().add(debitLineItem);
 
-                if (debitAmountValue == 0) {  // consumed credits for given DebitLineItem
+                if (debitAmountValue.compareTo(BigDecimal.ZERO) == 0) {  // consumed credits for given DebitLineItem
                     break outer; // break outer for loop
                 }
             }
